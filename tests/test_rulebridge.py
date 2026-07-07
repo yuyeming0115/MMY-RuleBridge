@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rulebridge.cli import app
 from rulebridge.generator import render_files
+from rulebridge.pack import set_pack_enabled
 from rulebridge.source import load_source
 from rulebridge.validator import Severity, validate_source
 from rulebridge.writer import START, desired_file_content, replace_managed_block
@@ -104,3 +106,18 @@ def test_new_managed_file_content_contains_markers(tmp_path: Path) -> None:
     assert status == "create"
     assert desired is not None
     assert desired.startswith(START)
+
+
+def test_set_pack_enabled_toggles_pack_yaml(tmp_path: Path) -> None:
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\nenabled: false\n")
+    diagnostic = set_pack_enabled(tmp_path, "demo", True)
+    assert not diagnostic.is_error
+    assert "enabled: true" in (tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml").read_text(encoding="utf-8")
+
+
+def test_pack_list_command_outputs_pack(tmp_path: Path, capsys) -> None:
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\ntitle: Demo Pack\nenabled: true\n")
+    assert app(["pack", "list", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "demo" in output
+    assert "enabled" in output

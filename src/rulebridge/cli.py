@@ -6,6 +6,7 @@ from pathlib import Path
 from .adapters import list_targets as adapter_names
 from .generator import render_files
 from .models import Diagnostic, Severity
+from .pack import list_packs, set_pack_enabled
 from .source import CONFIG_DIR, CONFIG_FILE, load_source
 from .validator import has_errors, validate_source, validate_targets
 from .writer import diff_for_file, write_files
@@ -61,6 +62,31 @@ def cmd_list_targets(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pack_list(args: argparse.Namespace) -> int:
+    packs, diagnostics = list_packs(args.root.resolve())
+    abort_on_errors(diagnostics)
+    if not packs:
+        print("No packs found.")
+        return 0
+    for pack in packs:
+        state = "enabled" if pack.enabled else "disabled"
+        title = pack.title or pack.name
+        print(f"{pack.name}\t{state}\t{title}")
+    return 0
+
+
+def cmd_pack_enable(args: argparse.Namespace) -> int:
+    diagnostic = set_pack_enabled(args.root.resolve(), args.name, True)
+    print_diagnostic(diagnostic)
+    return 1 if diagnostic.is_error else 0
+
+
+def cmd_pack_disable(args: argparse.Namespace) -> int:
+    diagnostic = set_pack_enabled(args.root.resolve(), args.name, False)
+    print_diagnostic(diagnostic)
+    return 1 if diagnostic.is_error else 0
+
+
 def cmd_list_rules(args: argparse.Namespace) -> int:
     source = load_source(args.root)
     abort_on_errors(source.diagnostics)
@@ -114,6 +140,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     targets_parser = sub.add_parser("list-targets", help="List supported target adapters.")
     targets_parser.set_defaults(func=cmd_list_targets)
+
+    pack_parser = sub.add_parser("pack", help="Manage optional rule and skill packs.")
+    pack_sub = pack_parser.add_subparsers(dest="pack_command", required=True)
+
+    pack_list_parser = pack_sub.add_parser("list", help="List available packs.")
+    pack_list_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    pack_list_parser.set_defaults(func=cmd_pack_list)
+
+    pack_enable_parser = pack_sub.add_parser("enable", help="Enable a pack by name.")
+    pack_enable_parser.add_argument("name", help="Pack name.")
+    pack_enable_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    pack_enable_parser.set_defaults(func=cmd_pack_enable)
+
+    pack_disable_parser = pack_sub.add_parser("disable", help="Disable a pack by name.")
+    pack_disable_parser.add_argument("name", help="Pack name.")
+    pack_disable_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    pack_disable_parser.set_defaults(func=cmd_pack_disable)
 
     rules_parser = sub.add_parser("list-rules", help="List loaded rules.")
     rules_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")

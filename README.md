@@ -101,13 +101,33 @@ rulebridge validate --root "D:/GitWork/RuleBridgeTest"
 rulebridge list-targets
 ```
 
-### 4. 查看已加载规则
+### 4. 查看和管理规则包
+
+查看可用 pack：
+
+```powershell
+rulebridge pack list --root "D:/GitWork/RuleBridgeTest"
+```
+
+启用 pack：
+
+```powershell
+rulebridge pack enable example-pack --root "D:/GitWork/RuleBridgeTest"
+```
+
+禁用 pack：
+
+```powershell
+rulebridge pack disable example-pack --root "D:/GitWork/RuleBridgeTest"
+```
+
+### 5. 查看已加载规则
 
 ```powershell
 rulebridge list-rules --root "D:/GitWork/RuleBridgeTest"
 ```
 
-### 5. 预览差异
+### 6. 预览差异
 
 ```powershell
 rulebridge diff --root "D:/GitWork/RuleBridgeTest"
@@ -119,13 +139,13 @@ rulebridge diff --root "D:/GitWork/RuleBridgeTest"
 rulebridge diff --root "D:/GitWork/RuleBridgeTest" --target codex
 ```
 
-### 6. 干运行同步
+### 7. 干运行同步
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --dry-run
 ```
 
-### 7. 真正生成
+### 8. 真正生成
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest"
