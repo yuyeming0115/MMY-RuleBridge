@@ -59,6 +59,8 @@ def pack_content_diff(root: Path, name: str) -> tuple[str, Diagnostic | None]:
         *sorted((pack_dir / "commands").glob("*.md")),
         *sorted((pack_dir / "hooks").glob("*.yaml")),
         *sorted((pack_dir / "hooks").glob("*.yml")),
+        *sorted((pack_dir / "mcp").glob("*.yaml")),
+        *sorted((pack_dir / "mcp").glob("*.yml")),
     ]
     if not files:
         return f"# Pack {name} has no rules or skills.\n", None

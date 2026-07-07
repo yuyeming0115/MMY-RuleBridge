@@ -37,7 +37,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     root = args.root.resolve()
     ai_dir = root / CONFIG_DIR
     files = {
-        ai_dir / CONFIG_FILE: """project:\n  name: MMY RuleBridge\n  type: ai-agent-config-tool\n\nrules:\n  include:\n    - rules/common.md\n    - rules/security.md\n    - rules/git.md\n\ntargets:\n  - codex\n  - claude\n  - cursor\n  - generic\n  - git\n  - zcode\n  - trae\n  - codebuddy\n  - workbuddy\n\nprofile: dev\n""",
+        ai_dir / CONFIG_FILE: """project:\n  name: MMY RuleBridge\n  type: ai-agent-config-tool\n\nrules:\n  include:\n    - rules/common.md\n    - rules/security.md\n    - rules/git.md\n\ntargets:\n  - codex\n  - claude\n  - cursor\n  - generic\n  - git\n  - mcp\n  - zcode\n  - trae\n  - codebuddy\n  - workbuddy\n\nprofile: dev\n""",
         ai_dir / "rules" / "common.md": """# Common Rules\n\n- Respond clearly and keep technical terms, paths, commands, and logs unchanged.\n- Prefer small, reversible changes.\n- Match the surrounding code style.\n""",
         ai_dir / "rules" / "security.md": """# Security Rules\n\n- Do not expose secrets, tokens, passwords, cookies, or private keys.\n- Ask before writing outside the project root.\n- Do not modify user-level agent configuration by default.\n""",
         ai_dir / "rules" / "git.md": """# Git Rules\n\n- Check `git status` before staging or committing.\n- Check `git diff --cached` before committing.\n- Do not push unless explicitly requested.\n""",
@@ -45,6 +45,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         ai_dir / "commands" / "review.md": """---\ndescription: Review the given scope with project rules.\nargument-hint: "[scope]"\nskills:\n  - example-skill\n---\n\nReview this scope using the project rules and report risks first:\n\n$ARGUMENTS\n""",
         ai_dir / "hooks" / "before_commit.yaml": """event: before_commit\nsteps:\n  - type: command\n    run: git status --short\n  - type: secret_scan\ntargets:\n  - git\n  - codex\n  - claude\n""",
         ai_dir / "hooks" / "before_push.yaml": """event: before_push\nsteps:\n  - type: command\n    run: git status --short\n  - type: require_confirmation\n    message: Confirm pushed commits contain no secrets and target branch is correct.\ntargets:\n  - git\n  - codex\n  - claude\n""",
+        ai_dir / "mcp" / "servers.yaml": """servers:\n  filesystem:\n    enabled: true\n    command: npx\n    args:\n      - -y\n      - "@modelcontextprotocol/server-filesystem"\n      - .\n    env:\n      NODE_ENV: production\n    targets:\n      - mcp\n      - codebuddy\n      - workbuddy\n""",
         ai_dir / "packs" / "example-pack" / "pack.yaml": """name: example-pack\ntitle: Example Optional Pack\ndescription: Disabled sample pack. Enable manually after review.\nlicense: review-required\nenabled: false\npriority: community\ntargets:\n  - codex\n  - claude\n  - cursor\n""",
     }
     created = 0
@@ -125,6 +126,17 @@ def cmd_list_hooks(args: argparse.Namespace) -> int:
         origin = f"pack:{hook.pack_name}" if hook.source == "pack" else "project"
         targets = ",".join(hook.targets) if hook.targets else "all"
         print(f"{hook.event}\t{hook.path}\t{targets}\t{origin}")
+    return 0
+
+
+def cmd_list_mcp(args: argparse.Namespace) -> int:
+    source = load_source(args.root)
+    abort_on_errors(source.diagnostics)
+    for server in source.mcp_servers:
+        origin = f"pack:{server.pack_name}" if server.source == "pack" else "project"
+        targets = ",".join(server.targets) if server.targets else "all"
+        state = "enabled" if server.enabled else "disabled"
+        print(f"{server.name}\t{state}\t{server.command}\t{targets}\t{origin}")
     return 0
 
 
@@ -214,6 +226,10 @@ def build_parser() -> argparse.ArgumentParser:
     hooks_parser = sub.add_parser("list-hooks", help="List loaded hooks.")
     hooks_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
     hooks_parser.set_defaults(func=cmd_list_hooks)
+
+    mcp_parser = sub.add_parser("list-mcp", help="List loaded MCP servers.")
+    mcp_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    mcp_parser.set_defaults(func=cmd_list_mcp)
 
     validate_parser = sub.add_parser("validate", help="Validate source configuration without writing files.")
     validate_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")

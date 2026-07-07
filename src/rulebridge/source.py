@@ -9,6 +9,7 @@ from .models import (
     CommandDocument,
     Diagnostic,
     HookSpec,
+    McpServerSpec,
     PackConfig,
     RuleBridgeConfig,
     RuleDocument,
@@ -135,15 +136,50 @@ def load_project_hooks(ai_dir: Path, diagnostics: list[Diagnostic]) -> list[Hook
     return hooks
 
 
-def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackConfig], list[RuleDocument], list[SkillDocument], list[CommandDocument], list[HookSpec]]:
+def load_mcp_servers(path: Path, ai_dir: Path, diagnostics: list[Diagnostic], source: str = "project", pack_name: str | None = None) -> list[McpServerSpec]:
+    if not path.exists():
+        return []
+    data = load_yaml(path)
+    raw_servers = data.get("servers", {})
+    if not isinstance(raw_servers, dict):
+        diagnostics.append(Diagnostic(severity=Severity.ERROR, message="MCP servers must be a mapping", path=path))
+        return []
+    rel = path.relative_to(ai_dir) if path.is_relative_to(ai_dir) else path
+    servers: list[McpServerSpec] = []
+    for name, raw in raw_servers.items():
+        if not isinstance(raw, dict):
+            diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Invalid MCP server config: {name}", path=path))
+            continue
+        servers.append(
+            McpServerSpec(
+                name=str(name),
+                command=str(raw.get("command", "")),
+                args=[str(item) for item in raw.get("args", [])],
+                env={str(key): str(value) for key, value in raw.get("env", {}).items()},
+                enabled=bool(raw.get("enabled", True)),
+                targets=[str(item) for item in raw.get("targets", [])],
+                path=rel,
+                source=source,  # type: ignore[arg-type]
+                pack_name=pack_name,
+            )
+        )
+    return servers
+
+
+def load_project_mcp(ai_dir: Path, diagnostics: list[Diagnostic]) -> list[McpServerSpec]:
+    return load_mcp_servers(ai_dir / "mcp" / "servers.yaml", ai_dir, diagnostics)
+
+
+def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackConfig], list[RuleDocument], list[SkillDocument], list[CommandDocument], list[HookSpec], list[McpServerSpec]]:
     packs_dir = ai_dir / "packs"
     pack_configs: list[PackConfig] = []
     rules: list[RuleDocument] = []
     skills: list[SkillDocument] = []
     commands: list[CommandDocument] = []
     hooks: list[HookSpec] = []
+    mcp_servers: list[McpServerSpec] = []
     if not packs_dir.exists():
-        return pack_configs, rules, skills, commands, hooks
+        return pack_configs, rules, skills, commands, hooks, mcp_servers
 
     for pack_file in sorted(packs_dir.glob("*/pack.yaml")):
         try:
@@ -166,7 +202,8 @@ def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackCo
                 hooks.append(load_hook(hook_path, ai_dir, source="pack", pack_name=pack.name))
             except Exception as exc:
                 diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Invalid pack hook config: {exc}", path=hook_path))
-    return pack_configs, rules, skills, commands, hooks
+        mcp_servers.extend(load_mcp_servers(pack_dir / "mcp" / "servers.yaml", ai_dir, diagnostics, source="pack", pack_name=pack.name))
+    return pack_configs, rules, skills, commands, hooks, mcp_servers
 
 
 def load_source(root: Path | str = ".") -> SourceContext:
@@ -185,11 +222,12 @@ def load_source(root: Path | str = ".") -> SourceContext:
         config = RuleBridgeConfig()
         diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Missing {CONFIG_DIR}/{CONFIG_FILE}", path=config_path))
 
-    packs, pack_rules, pack_skills, pack_commands, pack_hooks = load_packs(ai_dir, diagnostics)
+    packs, pack_rules, pack_skills, pack_commands, pack_hooks, pack_mcp_servers = load_packs(ai_dir, diagnostics)
     project_rules = load_project_rules(ai_dir, config, diagnostics)
     project_skills = load_project_skills(ai_dir)
     project_commands = load_project_commands(ai_dir)
     project_hooks = load_project_hooks(ai_dir, diagnostics)
+    project_mcp_servers = load_project_mcp(ai_dir, diagnostics)
 
     return SourceContext(
         root=root_path,
@@ -199,6 +237,7 @@ def load_source(root: Path | str = ".") -> SourceContext:
         skills=[*pack_skills, *project_skills],
         commands=[*pack_commands, *project_commands],
         hooks=[*pack_hooks, *project_hooks],
+        mcp_servers=[*pack_mcp_servers, *project_mcp_servers],
         packs=packs,
         diagnostics=diagnostics,
     )

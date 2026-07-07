@@ -19,7 +19,7 @@ def write(path: Path, content: str) -> None:
 def make_source(root: Path) -> None:
     write(
         root / ".ai-agent" / "rulebridge.yaml",
-        """project:\n  name: Test Project\nrules:\n  include:\n    - rules/b.md\n    - rules/a.md\ntargets:\n  - codex\n  - claude\n  - cursor\n  - generic\n  - git\n  - zcode\n  - trae\n  - codebuddy\n  - workbuddy\n""",
+        """project:\n  name: Test Project\nrules:\n  include:\n    - rules/b.md\n    - rules/a.md\ntargets:\n  - codex\n  - claude\n  - cursor\n  - generic\n  - git\n  - mcp\n  - zcode\n  - trae\n  - codebuddy\n  - workbuddy\n""",
     )
     write(root / ".ai-agent" / "rules" / "a.md", "# A Rule\n\nA body.\n")
     write(root / ".ai-agent" / "rules" / "b.md", "# B Rule\n\nB body.\n")
@@ -35,6 +35,10 @@ def make_source(root: Path) -> None:
         root / ".ai-agent" / "hooks" / "before_commit.yaml",
         """event: before_commit\nsteps:\n  - type: command\n    run: git status --short\n  - type: secret_scan\ntargets:\n  - git\n  - codex\n""",
     )
+    write(
+        root / ".ai-agent" / "mcp" / "servers.yaml",
+        """servers:\n  filesystem:\n    enabled: true\n    command: npx\n    args:\n      - -y\n      - "@modelcontextprotocol/server-filesystem"\n      - .\n    env:\n      NODE_ENV: production\n    targets:\n      - mcp\n      - codebuddy\n      - workbuddy\n  disabled:\n    enabled: false\n    command: python\n""",
+    )
 
 
 def test_load_source_respects_include_order(tmp_path: Path) -> None:
@@ -44,6 +48,7 @@ def test_load_source_respects_include_order(tmp_path: Path) -> None:
     assert [skill.name for skill in source.skills] == ["demo"]
     assert [command.name for command in source.commands] == ["review"]
     assert [hook.event for hook in source.hooks] == ["before_commit"]
+    assert [server.name for server in source.mcp_servers] == ["filesystem", "disabled"]
 
 
 def test_default_rule_scan_when_no_include(tmp_path: Path) -> None:
@@ -61,6 +66,7 @@ def test_pack_enabled_and_disabled(tmp_path: Path) -> None:
     )
     write(tmp_path / ".ai-agent" / "packs" / "enabled" / "rules" / "p.md", "# Pack Rule\n")
     write(tmp_path / ".ai-agent" / "packs" / "enabled" / "commands" / "ship.md", "---\ndescription: Ship.\n---\n\nShip it.\n")
+    write(tmp_path / ".ai-agent" / "packs" / "enabled" / "mcp" / "servers.yaml", "servers:\n  packfs:\n    enabled: true\n    command: npx\n")
     write(
         tmp_path / ".ai-agent" / "packs" / "disabled" / "pack.yaml",
         "name: disabled\nenabled: false\n",
@@ -69,6 +75,7 @@ def test_pack_enabled_and_disabled(tmp_path: Path) -> None:
     source = load_source(tmp_path)
     assert [rule.name for rule in source.rules] == ["p", "b", "a"]
     assert [command.name for command in source.commands] == ["ship", "review"]
+    assert [server.name for server in source.mcp_servers] == ["packfs", "filesystem", "disabled"]
 
 
 def test_render_target_paths(tmp_path: Path) -> None:
@@ -82,9 +89,20 @@ def test_render_target_paths(tmp_path: Path) -> None:
     assert ".zcode/commands/review.md" in paths
     assert ".claude/commands/review.md" in paths
     assert ".githooks/pre-commit" in paths
+    assert ".mcp.json" in paths
+    assert ".codebuddy-plugin/mcp.json" in paths
+    assert ".workbuddy-plugin/mcp.json" in paths
     assert ".trae/skills/demo/SKILL.md" in paths
     assert ".codebuddy-plugin/rules/a.md" in paths
     assert ".workbuddy-plugin/skills/demo/SKILL.md" in paths
+
+
+def test_mcp_json_excludes_disabled_servers(tmp_path: Path) -> None:
+    make_source(tmp_path)
+    source = load_source(tmp_path)
+    file = next(item for item in render_files(source, "mcp") if item.path.name == ".mcp.json")
+    assert '"filesystem"' in file.content
+    assert '"disabled"' not in file.content
 
 
 def test_managed_block_replacement() -> None:
@@ -112,6 +130,16 @@ def test_validate_reports_missing_rule_and_secret_keyword(tmp_path: Path) -> Non
     diagnostics = validate_source(source)
     assert any(item.severity == Severity.ERROR and "missing.md" in item.message.lower() for item in diagnostics)
     assert any(item.severity == Severity.WARN and "token" in item.message.lower() for item in diagnostics)
+
+
+def test_validate_warns_for_inline_mcp_secret(tmp_path: Path) -> None:
+    write(tmp_path / ".ai-agent" / "rulebridge.yaml", "targets:\n  - mcp\n")
+    write(
+        tmp_path / ".ai-agent" / "mcp" / "servers.yaml",
+        """servers:\n  search:\n    enabled: true\n    command: python\n    env:\n      API_TOKEN: real-value\n""",
+    )
+    diagnostics = validate_source(load_source(tmp_path))
+    assert any(item.severity == Severity.WARN and "inline secret" in item.message for item in diagnostics)
 
 
 def test_new_managed_file_content_contains_markers(tmp_path: Path) -> None:
@@ -147,6 +175,14 @@ def test_list_hooks_command_outputs_hook(tmp_path: Path, capsys) -> None:
     assert "hooks" in output
 
 
+def test_list_mcp_command_outputs_server(tmp_path: Path, capsys) -> None:
+    make_source(tmp_path)
+    assert app(["list-mcp", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "filesystem" in output
+    assert "enabled" in output
+
+
 def test_pack_list_command_outputs_pack(tmp_path: Path, capsys) -> None:
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\ntitle: Demo Pack\nenabled: true\n")
     assert app(["pack", "list", "--root", str(tmp_path)]) == 0
@@ -159,11 +195,13 @@ def test_pack_diff_command_outputs_pack_content(tmp_path: Path, capsys) -> None:
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\nenabled: false\n")
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "rules" / "review.md", "# Review\n\nCheck changes.\n")
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "commands" / "ship.md", "---\ndescription: Ship.\n---\n\nShip.\n")
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "mcp" / "servers.yaml", "servers:\n  demo:\n    command: npx\n")
     assert app(["pack", "diff", "demo", "--root", str(tmp_path)]) == 0
     output = capsys.readouterr().out
     normalized = output.replace("\\", "/")
     assert "packs/demo/rules/review.md" in normalized
     assert "packs/demo/commands/ship.md" in normalized
+    assert "packs/demo/mcp/servers.yaml" in normalized
     assert "+# Review" in output
 
 
@@ -173,11 +211,14 @@ def test_doctor_reports_duplicate_rule_names_and_private_paths(tmp_path: Path) -
         """project:\n  name: Test\ntargets:\n  - codex\n""",
     )
     write(tmp_path / ".ai-agent" / "rules" / "same.md", "# Same\n\nUse C:/Users/EDY/private.txt carefully.\n")
+    write(tmp_path / ".ai-agent" / "mcp" / "servers.yaml", "servers:\n  same_mcp:\n    command: npx\n")
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\nenabled: true\n")
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "rules" / "same.md", "# Pack Same\n")
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "mcp" / "servers.yaml", "servers:\n  same_mcp:\n    command: npx\n")
     diagnostics = doctor_source(load_source(tmp_path))
     messages = [item.message for item in diagnostics]
     assert any("Duplicate rule name 'same'" in message for message in messages)
+    assert any("Duplicate MCP server name 'same_mcp'" in message for message in messages)
     assert any("Private-looking local path" in message for message in messages)
 
 

@@ -68,6 +68,17 @@ def check_duplicate_hooks(source: SourceContext) -> list[Diagnostic]:
     return diagnostics
 
 
+def check_duplicate_mcp_servers(source: SourceContext) -> list[Diagnostic]:
+    diagnostics: list[Diagnostic] = []
+    by_name: dict[str, list[str]] = defaultdict(list)
+    for server in source.mcp_servers:
+        by_name[server.name].append(str(server.path))
+    for name, paths in by_name.items():
+        if len(paths) > 1:
+            diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Duplicate MCP server name '{name}': {', '.join(paths)}"))
+    return diagnostics
+
+
 def check_private_paths(source: SourceContext) -> list[Diagnostic]:
     diagnostics: list[Diagnostic] = []
     for doc in [*source.rules, *source.skills, *source.commands]:
@@ -77,6 +88,11 @@ def check_private_paths(source: SourceContext) -> list[Diagnostic]:
         for step in hook.steps:
             if PRIVATE_PATH_RE.search(str(step.get("run", ""))) or PRIVATE_PATH_RE.search(str(step.get("message", ""))):
                 diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Private-looking local path found in {hook.path}", path=source.ai_dir / hook.path))
+                break
+    for server in source.mcp_servers:
+        for value in [server.command, *server.args, *server.env.values()]:
+            if PRIVATE_PATH_RE.search(str(value)):
+                diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Private-looking local path found in MCP server {server.name}", path=source.ai_dir / server.path))
                 break
     return diagnostics
 
@@ -108,6 +124,10 @@ def check_target_usefulness(source: SourceContext, target: str | None = None) ->
         for name in targets:
             if name in {"git", "claude", "codex", "generic"}:
                 diagnostics.append(Diagnostic(severity=Severity.INFO, message=f"Target '{name}' has no hooks to render"))
+    if not source.mcp_servers:
+        for name in targets:
+            if name in {"mcp", "codebuddy", "workbuddy", "claude", "codex", "generic"}:
+                diagnostics.append(Diagnostic(severity=Severity.INFO, message=f"Target '{name}' has no MCP servers to render"))
     return diagnostics
 
 
@@ -137,6 +157,7 @@ def doctor_source(source: SourceContext, target: str | None = None) -> list[Diag
     diagnostics.extend(check_duplicate_skills(source))
     diagnostics.extend(check_duplicate_commands(source))
     diagnostics.extend(check_duplicate_hooks(source))
+    diagnostics.extend(check_duplicate_mcp_servers(source))
     diagnostics.extend(check_private_paths(source))
     diagnostics.extend(check_pack_review_status(source))
     diagnostics.extend(check_target_usefulness(source, target))

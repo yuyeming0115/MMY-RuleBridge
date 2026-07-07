@@ -22,6 +22,7 @@ SECRET_KEYWORDS = [
 
 SENSITIVE_PATTERNS = [".env", ".pem", ".key", ".p12", ".pfx"]
 SUPPORTED_HOOK_EVENTS = {"before_commit", "before_push"}
+SECRET_FIELD_RE = re.compile(r"(?i)(key|token|secret|password|passwd|authorization)")
 
 
 def contains_sensitive_assignment(content: str, keyword: str) -> bool:
@@ -80,11 +81,29 @@ def validate_hooks(source: SourceContext) -> list[Diagnostic]:
     return diagnostics
 
 
+def validate_mcp_servers(source: SourceContext) -> list[Diagnostic]:
+    diagnostics: list[Diagnostic] = []
+    for server in source.mcp_servers:
+        path = source.ai_dir / server.path
+        if server.enabled and not server.command:
+            diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Enabled MCP server has no command: {server.name}", path=path))
+        for key, value in server.env.items():
+            if SECRET_FIELD_RE.search(key) and value and not value.startswith("${"):
+                diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"MCP env may contain inline secret: {server.name}.{key}", path=path))
+        for item in [server.command, *server.args, *server.env.values()]:
+            lowered = str(item).lower()
+            if any(pattern in lowered for pattern in SENSITIVE_PATTERNS):
+                diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"MCP server references sensitive-looking path/value: {server.name}", path=path))
+                break
+    return diagnostics
+
+
 def validate_source(source: SourceContext, target: str | None = None, files: list[GeneratedFile] | None = None) -> list[Diagnostic]:
     diagnostics = [*source.diagnostics]
     diagnostics.extend(validate_targets(source, target))
     diagnostics.extend(scan_sensitive_content(source))
     diagnostics.extend(validate_hooks(source))
+    diagnostics.extend(validate_mcp_servers(source))
     if files is not None:
         diagnostics.extend(validate_generated_paths(source, files))
     return diagnostics

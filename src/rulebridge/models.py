@@ -74,6 +74,18 @@ class HookSpec(BaseModel):
     pack_name: str | None = None
 
 
+class McpServerSpec(BaseModel):
+    name: str
+    command: str = ""
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+    enabled: bool = True
+    targets: list[str] = Field(default_factory=list)
+    path: Path
+    source: Literal["project", "pack"] = "project"
+    pack_name: str | None = None
+
+
 class PackConfig(BaseModel):
     name: str
     title: str | None = None
@@ -93,6 +105,7 @@ class SourceContext(BaseModel):
     skills: list[SkillDocument] = Field(default_factory=list)
     commands: list[CommandDocument] = Field(default_factory=list)
     hooks: list[HookSpec] = Field(default_factory=list)
+    mcp_servers: list[McpServerSpec] = Field(default_factory=list)
     packs: list[PackConfig] = Field(default_factory=list)
     diagnostics: list[Diagnostic] = Field(default_factory=list)
 

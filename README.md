@@ -15,10 +15,11 @@ RuleBridge 是一个多 Agent 规则桥接 CLI 工具。它让你只维护一份
 | `cursor` | `.cursor/rules/*.mdc` |
 | `generic` | `AI_RULES.md` |
 | `git` | `.githooks/pre-commit`、`.githooks/pre-push` |
+| `mcp` | `.mcp.json` |
 | `zcode` | `.zcode/skills/<skill>/SKILL.md`、`.zcode/commands/*.md` |
 | `trae` | `.trae/skills/<skill>/SKILL.md` |
-| `codebuddy` | `.codebuddy-plugin/rules/*.md`、`.codebuddy-plugin/skills/*/SKILL.md` |
-| `workbuddy` | `.workbuddy-plugin/rules/*.md`、`.workbuddy-plugin/skills/*/SKILL.md` |
+| `codebuddy` | `.codebuddy-plugin/rules/*.md`、`.codebuddy-plugin/skills/*/SKILL.md`、`.codebuddy-plugin/mcp.json` |
+| `workbuddy` | `.workbuddy-plugin/rules/*.md`、`.workbuddy-plugin/skills/*/SKILL.md`、`.workbuddy-plugin/mcp.json` |
 
 第一版只写项目目录内文件，不会写入 `~/.zcode`、`~/.trae-cn`、`~/.codebuddy`、`~/.workbuddy` 等用户级目录。
 
@@ -86,6 +87,8 @@ rulebridge init --root "D:/GitWork/RuleBridgeTest"
 ├─ hooks/
 │  ├─ before_commit.yaml
 │  └─ before_push.yaml
+├─ mcp/
+│  └─ servers.yaml
 └─ packs/
    └─ example-pack/
       └─ pack.yaml
@@ -167,7 +170,13 @@ rulebridge list-commands --root "D:/GitWork/RuleBridgeTest"
 rulebridge list-hooks --root "D:/GitWork/RuleBridgeTest"
 ```
 
-### 9. 预览差异
+### 9. 查看已加载 MCP Server
+
+```powershell
+rulebridge list-mcp --root "D:/GitWork/RuleBridgeTest"
+```
+
+### 10. 预览差异
 
 ```powershell
 rulebridge diff --root "D:/GitWork/RuleBridgeTest"
@@ -179,13 +188,13 @@ rulebridge diff --root "D:/GitWork/RuleBridgeTest"
 rulebridge diff --root "D:/GitWork/RuleBridgeTest" --target codex
 ```
 
-### 10. 干运行同步
+### 11. 干运行同步
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --dry-run
 ```
 
-### 11. 真正生成
+### 12. 真正生成
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest"
@@ -198,6 +207,7 @@ rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target codex
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target claude
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target cursor
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target git
+rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target mcp
 ```
 
 ## 推荐测试流程
@@ -264,6 +274,8 @@ targets:
   - claude
   - cursor
   - generic
+  - git
+  - mcp
   - zcode
   - trae
   - codebuddy
@@ -325,6 +337,33 @@ targets:
   - claude
 ```
 
+MCP 配置放在：
+
+```text
+.ai-agent/mcp/servers.yaml
+```
+
+MCP Server 示例：
+
+```yaml
+servers:
+  filesystem:
+    enabled: true
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+    env:
+      NODE_ENV: production
+    targets:
+      - mcp
+      - codebuddy
+      - workbuddy
+```
+
+RuleBridge 默认只生成项目内候选 MCP 文件，例如 `.mcp.json`、`.codebuddy-plugin/mcp.json`、`.workbuddy-plugin/mcp.json`，不会写入用户主目录下真实工具配置。
+
 可选规则包放在：
 
 ```text
@@ -365,6 +404,7 @@ rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target codex --force
 - 生成路径是否逃逸项目根目录。
 - 是否存在敏感路径，如 `.env`、`.pem`、`.key`。
 - 是否存在疑似敏感字段赋值，如 `token: ...`、`api_key: ...`、`password = ...`。
+- MCP env 中是否存在疑似内联 secret。
 
 ## 开发者测试
 
@@ -395,9 +435,6 @@ python -m pytest
 ## 当前暂未实现
 
 - GUI / TUI。
-- Git Hook 生成。
-- ZCode command 生成。
-- MCP 配置生成。
 - Qoder Memory 导出。
 - 用户级目录自动写入。
 - 在线导入外部经验包。

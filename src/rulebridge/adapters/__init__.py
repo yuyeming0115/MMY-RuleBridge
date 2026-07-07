@@ -7,6 +7,7 @@ from rulebridge.adapters.codex import CodexAdapter
 from rulebridge.adapters.cursor import CursorAdapter
 from rulebridge.adapters.generic import GenericAdapter
 from rulebridge.adapters.git import GitAdapter
+from rulebridge.adapters.mcp import McpAdapter
 from rulebridge.adapters.trae import TraeAdapter
 from rulebridge.adapters.workbuddy import WorkBuddyAdapter
 from rulebridge.adapters.zcode import ZCodeAdapter
@@ -19,6 +20,7 @@ ADAPTERS: dict[str, TargetAdapter] = {
         CursorAdapter(),
         GenericAdapter(),
         GitAdapter(),
+        McpAdapter(),
         ZCodeAdapter(),
         TraeAdapter(),
         CodeBuddyAdapter(),

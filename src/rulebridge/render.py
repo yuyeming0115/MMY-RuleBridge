@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from .models import CommandDocument, RuleDocument, SkillDocument, SourceContext
+import json
+
+from .models import CommandDocument, McpServerSpec, RuleDocument, SkillDocument, SourceContext
 
 
 def render_rule_bundle(source: SourceContext, heading: str) -> str:
@@ -39,6 +41,14 @@ def render_rule_bundle(source: SourceContext, heading: str) -> str:
             origin = f"pack:{hook.pack_name}" if hook.source == "pack" else "project"
             parts.append(f"- `{hook.event}` from `{hook.path}` ({origin})")
         parts.append("")
+    if source.mcp_servers:
+        parts.append("## MCP Servers")
+        parts.append("")
+        for server in source.mcp_servers:
+            origin = f"pack:{server.pack_name}" if server.source == "pack" else "project"
+            state = "enabled" if server.enabled else "disabled"
+            parts.append(f"- `{server.name}` ({state}) command `{server.command}` from `{server.path}` ({origin})")
+        parts.append("")
     return "\n".join(parts).rstrip() + "\n"
 
 
@@ -75,3 +85,21 @@ def command_index(commands: list[CommandDocument]) -> str:
     for command in commands:
         lines.append(f"- `/{command.name}`: `{command.path}`")
     return "\n".join(lines) + "\n"
+
+
+def mcp_servers_for_target(servers: list[McpServerSpec], target: str) -> list[McpServerSpec]:
+    return [server for server in servers if server.enabled and (not server.targets or target in server.targets)]
+
+
+def render_mcp_json(servers: list[McpServerSpec], target: str = "mcp") -> str:
+    payload = {
+        "mcpServers": {
+            server.name: {
+                "command": server.command,
+                "args": server.args,
+                **({"env": server.env} if server.env else {}),
+            }
+            for server in mcp_servers_for_target(servers, target)
+        }
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
