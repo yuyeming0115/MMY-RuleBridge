@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rulebridge.cli import app
+from rulebridge.doctor import doctor_source
 from rulebridge.generator import render_files
 from rulebridge.pack import set_pack_enabled
 from rulebridge.source import load_source
@@ -130,3 +131,24 @@ def test_pack_diff_command_outputs_pack_content(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "packs/demo/rules/review.md" in output.replace("\\", "/")
     assert "+# Review" in output
+
+
+def test_doctor_reports_duplicate_rule_names_and_private_paths(tmp_path: Path) -> None:
+    write(
+        tmp_path / ".ai-agent" / "rulebridge.yaml",
+        """project:\n  name: Test\ntargets:\n  - codex\n""",
+    )
+    write(tmp_path / ".ai-agent" / "rules" / "same.md", "# Same\n\nUse C:/Users/EDY/private.txt carefully.\n")
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\nenabled: true\n")
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "rules" / "same.md", "# Pack Same\n")
+    diagnostics = doctor_source(load_source(tmp_path))
+    messages = [item.message for item in diagnostics]
+    assert any("Duplicate rule name 'same'" in message for message in messages)
+    assert any("Private-looking local path" in message for message in messages)
+
+
+def test_doctor_command_outputs_no_issues_for_clean_project(tmp_path: Path, capsys) -> None:
+    make_source(tmp_path)
+    assert app(["doctor", "--root", str(tmp_path), "--target", "codex"]) == 0
+    output = capsys.readouterr().out
+    assert "Doctor found no issues" in output

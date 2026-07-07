@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from .adapters import list_targets as adapter_names
+from .doctor import doctor_source
 from .generator import render_files
 from .models import Diagnostic, Severity
 from .pack import list_packs, pack_content_diff, set_pack_enabled
@@ -115,6 +116,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    source = load_source(args.root)
+    diagnostics = doctor_source(source, args.target)
+    for item in diagnostics:
+        print_diagnostic(item)
+    return 1 if has_errors(diagnostics) else 0
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     source = load_source(args.root)
     abort_on_errors([*source.diagnostics, *validate_targets(source, args.target)])
@@ -180,6 +189,11 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
     validate_parser.add_argument("--target", help="Only validate one target adapter.")
     validate_parser.set_defaults(func=cmd_validate)
+
+    doctor_parser = sub.add_parser("doctor", help="Run deeper diagnostics for safety and maintainability.")
+    doctor_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    doctor_parser.add_argument("--target", help="Only inspect one target adapter.")
+    doctor_parser.set_defaults(func=cmd_doctor)
 
     diff_parser = sub.add_parser("diff", help="Show unified diff for generated files.")
     diff_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")

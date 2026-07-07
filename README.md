@@ -103,7 +103,21 @@ rulebridge validate --root "D:/GitWork/RuleBridgeTest"
 rulebridge list-targets
 ```
 
-### 4. 查看和管理规则包
+### 4. 深度诊断
+
+`doctor` 会在 `validate` 基础上额外检查重复规则、重复技能、私有路径、pack 审查状态、目标是否有内容可生成、现有输出文件是否缺少托管区块。
+
+```powershell
+rulebridge doctor --root "D:/GitWork/RuleBridgeTest"
+```
+
+只诊断某个目标：
+
+```powershell
+rulebridge doctor --root "D:/GitWork/RuleBridgeTest" --target codex
+```
+
+### 5. 查看和管理规则包
 
 查看可用 pack：
 
@@ -129,13 +143,13 @@ rulebridge pack enable example-pack --root "D:/GitWork/RuleBridgeTest"
 rulebridge pack disable example-pack --root "D:/GitWork/RuleBridgeTest"
 ```
 
-### 5. 查看已加载规则
+### 6. 查看已加载规则
 
 ```powershell
 rulebridge list-rules --root "D:/GitWork/RuleBridgeTest"
 ```
 
-### 6. 预览差异
+### 7. 预览差异
 
 ```powershell
 rulebridge diff --root "D:/GitWork/RuleBridgeTest"
@@ -147,13 +161,13 @@ rulebridge diff --root "D:/GitWork/RuleBridgeTest"
 rulebridge diff --root "D:/GitWork/RuleBridgeTest" --target codex
 ```
 
-### 7. 干运行同步
+### 8. 干运行同步
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --dry-run
 ```
 
-### 8. 真正生成
+### 9. 真正生成
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest"
