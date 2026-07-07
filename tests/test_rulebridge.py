@@ -19,7 +19,7 @@ def write(path: Path, content: str) -> None:
 def make_source(root: Path) -> None:
     write(
         root / ".ai-agent" / "rulebridge.yaml",
-        """project:\n  name: Test Project\nrules:\n  include:\n    - rules/b.md\n    - rules/a.md\ntargets:\n  - codex\n  - claude\n  - cursor\n  - generic\n  - zcode\n  - trae\n  - codebuddy\n  - workbuddy\n""",
+        """project:\n  name: Test Project\nrules:\n  include:\n    - rules/b.md\n    - rules/a.md\ntargets:\n  - codex\n  - claude\n  - cursor\n  - generic\n  - git\n  - zcode\n  - trae\n  - codebuddy\n  - workbuddy\n""",
     )
     write(root / ".ai-agent" / "rules" / "a.md", "# A Rule\n\nA body.\n")
     write(root / ".ai-agent" / "rules" / "b.md", "# B Rule\n\nB body.\n")
@@ -31,6 +31,10 @@ def make_source(root: Path) -> None:
         root / ".ai-agent" / "commands" / "review.md",
         """---\ndescription: Review a scope.\nargument-hint: "[scope]"\n---\n\nReview $ARGUMENTS.\n""",
     )
+    write(
+        root / ".ai-agent" / "hooks" / "before_commit.yaml",
+        """event: before_commit\nsteps:\n  - type: command\n    run: git status --short\n  - type: secret_scan\ntargets:\n  - git\n  - codex\n""",
+    )
 
 
 def test_load_source_respects_include_order(tmp_path: Path) -> None:
@@ -39,6 +43,7 @@ def test_load_source_respects_include_order(tmp_path: Path) -> None:
     assert [rule.name for rule in source.rules] == ["b", "a"]
     assert [skill.name for skill in source.skills] == ["demo"]
     assert [command.name for command in source.commands] == ["review"]
+    assert [hook.event for hook in source.hooks] == ["before_commit"]
 
 
 def test_default_rule_scan_when_no_include(tmp_path: Path) -> None:
@@ -76,6 +81,7 @@ def test_render_target_paths(tmp_path: Path) -> None:
     assert ".zcode/skills/demo/SKILL.md" in paths
     assert ".zcode/commands/review.md" in paths
     assert ".claude/commands/review.md" in paths
+    assert ".githooks/pre-commit" in paths
     assert ".trae/skills/demo/SKILL.md" in paths
     assert ".codebuddy-plugin/rules/a.md" in paths
     assert ".workbuddy-plugin/skills/demo/SKILL.md" in paths
@@ -131,6 +137,14 @@ def test_list_commands_command_outputs_command(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "review" in output
     assert "commands" in output
+
+
+def test_list_hooks_command_outputs_hook(tmp_path: Path, capsys) -> None:
+    make_source(tmp_path)
+    assert app(["list-hooks", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "before_commit" in output
+    assert "hooks" in output
 
 
 def test_pack_list_command_outputs_pack(tmp_path: Path, capsys) -> None:

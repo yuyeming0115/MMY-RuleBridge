@@ -14,6 +14,7 @@ RuleBridge 是一个多 Agent 规则桥接 CLI 工具。它让你只维护一份
 | `claude` | `CLAUDE.md`、`.claude/commands/*.md` |
 | `cursor` | `.cursor/rules/*.mdc` |
 | `generic` | `AI_RULES.md` |
+| `git` | `.githooks/pre-commit`、`.githooks/pre-push` |
 | `zcode` | `.zcode/skills/<skill>/SKILL.md`、`.zcode/commands/*.md` |
 | `trae` | `.trae/skills/<skill>/SKILL.md` |
 | `codebuddy` | `.codebuddy-plugin/rules/*.md`、`.codebuddy-plugin/skills/*/SKILL.md` |
@@ -82,6 +83,9 @@ rulebridge init --root "D:/GitWork/RuleBridgeTest"
 │     └─ SKILL.md
 ├─ commands/
 │  └─ review.md
+├─ hooks/
+│  ├─ before_commit.yaml
+│  └─ before_push.yaml
 └─ packs/
    └─ example-pack/
       └─ pack.yaml
@@ -157,7 +161,13 @@ rulebridge list-rules --root "D:/GitWork/RuleBridgeTest"
 rulebridge list-commands --root "D:/GitWork/RuleBridgeTest"
 ```
 
-### 8. 预览差异
+### 8. 查看已加载 Hook
+
+```powershell
+rulebridge list-hooks --root "D:/GitWork/RuleBridgeTest"
+```
+
+### 9. 预览差异
 
 ```powershell
 rulebridge diff --root "D:/GitWork/RuleBridgeTest"
@@ -169,13 +179,13 @@ rulebridge diff --root "D:/GitWork/RuleBridgeTest"
 rulebridge diff --root "D:/GitWork/RuleBridgeTest" --target codex
 ```
 
-### 9. 干运行同步
+### 10. 干运行同步
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --dry-run
 ```
 
-### 10. 真正生成
+### 11. 真正生成
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest"
@@ -187,6 +197,7 @@ rulebridge sync --root "D:/GitWork/RuleBridgeTest"
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target codex
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target claude
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target cursor
+rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target git
 ```
 
 ## 推荐测试流程
@@ -292,6 +303,26 @@ skills:
 Review this scope using the project rules and report risks first:
 
 $ARGUMENTS
+```
+
+Hook 文件放在：
+
+```text
+.ai-agent/hooks/*.yaml
+```
+
+当前 Git Hook MVP 支持 `before_commit` 和 `before_push`，会生成 `.githooks/pre-commit` 和 `.githooks/pre-push`。生成后如需让 Git 使用这些 hook，请在目标项目中执行 `git config core.hooksPath .githooks`。
+
+```yaml
+event: before_commit
+steps:
+  - type: command
+    run: git status --short
+  - type: secret_scan
+targets:
+  - git
+  - codex
+  - claude
 ```
 
 可选规则包放在：

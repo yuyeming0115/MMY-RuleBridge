@@ -32,6 +32,13 @@ def render_rule_bundle(source: SourceContext, heading: str) -> str:
             origin = f"pack:{command.pack_name}" if command.source == "pack" else "project"
             parts.append(f"- `/{command.name}` from `{command.path}` ({origin})")
         parts.append("")
+    if source.hooks:
+        parts.append("## Hooks")
+        parts.append("")
+        for hook in source.hooks:
+            origin = f"pack:{hook.pack_name}" if hook.source == "pack" else "project"
+            parts.append(f"- `{hook.event}` from `{hook.path}` ({origin})")
+        parts.append("")
     return "\n".join(parts).rstrip() + "\n"
 
 

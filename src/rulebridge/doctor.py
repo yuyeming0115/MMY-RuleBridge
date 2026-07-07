@@ -57,11 +57,27 @@ def check_duplicate_commands(source: SourceContext) -> list[Diagnostic]:
     return diagnostics
 
 
+def check_duplicate_hooks(source: SourceContext) -> list[Diagnostic]:
+    diagnostics: list[Diagnostic] = []
+    by_event: dict[str, list[str]] = defaultdict(list)
+    for hook in source.hooks:
+        by_event[hook.event].append(str(hook.path))
+    for event, paths in by_event.items():
+        if len(paths) > 1:
+            diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Duplicate hook event '{event}': {', '.join(paths)}"))
+    return diagnostics
+
+
 def check_private_paths(source: SourceContext) -> list[Diagnostic]:
     diagnostics: list[Diagnostic] = []
     for doc in [*source.rules, *source.skills, *source.commands]:
         if PRIVATE_PATH_RE.search(doc.content):
             diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Private-looking local path found in {doc.path}", path=source.ai_dir / doc.path))
+    for hook in source.hooks:
+        for step in hook.steps:
+            if PRIVATE_PATH_RE.search(str(step.get("run", ""))) or PRIVATE_PATH_RE.search(str(step.get("message", ""))):
+                diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Private-looking local path found in {hook.path}", path=source.ai_dir / hook.path))
+                break
     return diagnostics
 
 
@@ -88,6 +104,10 @@ def check_target_usefulness(source: SourceContext, target: str | None = None) ->
         for name in targets:
             if name in {"zcode", "claude", "codex", "generic"}:
                 diagnostics.append(Diagnostic(severity=Severity.INFO, message=f"Target '{name}' has no commands to render"))
+    if not source.hooks:
+        for name in targets:
+            if name in {"git", "claude", "codex", "generic"}:
+                diagnostics.append(Diagnostic(severity=Severity.INFO, message=f"Target '{name}' has no hooks to render"))
     return diagnostics
 
 
@@ -116,6 +136,7 @@ def doctor_source(source: SourceContext, target: str | None = None) -> list[Diag
     diagnostics.extend(check_duplicate_rules(source))
     diagnostics.extend(check_duplicate_skills(source))
     diagnostics.extend(check_duplicate_commands(source))
+    diagnostics.extend(check_duplicate_hooks(source))
     diagnostics.extend(check_private_paths(source))
     diagnostics.extend(check_pack_review_status(source))
     diagnostics.extend(check_target_usefulness(source, target))

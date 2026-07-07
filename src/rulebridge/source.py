@@ -8,6 +8,7 @@ import yaml
 from .models import (
     CommandDocument,
     Diagnostic,
+    HookSpec,
     PackConfig,
     RuleBridgeConfig,
     RuleDocument,
@@ -73,6 +74,21 @@ def load_command(path: Path, ai_dir: Path, source: str = "project", pack_name: s
     )
 
 
+def load_hook(path: Path, ai_dir: Path, source: str = "project", pack_name: str | None = None) -> HookSpec:
+    data = load_yaml(path)
+    rel = path.relative_to(ai_dir) if path.is_relative_to(ai_dir) else path
+    event = data.get("event") or path.stem
+    return HookSpec(
+        name=path.stem,
+        event=event,
+        path=rel,
+        steps=data.get("steps", []),
+        targets=data.get("targets", []),
+        source=source,  # type: ignore[arg-type]
+        pack_name=pack_name,
+    )
+
+
 def load_project_rules(ai_dir: Path, config: RuleBridgeConfig, diagnostics: list[Diagnostic]) -> list[RuleDocument]:
     rules_dir = ai_dir / "rules"
     rules: list[RuleDocument] = []
@@ -106,14 +122,28 @@ def load_project_commands(ai_dir: Path) -> list[CommandDocument]:
     return [load_command(path, ai_dir) for path in sorted(commands_dir.glob("*.md"))]
 
 
-def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackConfig], list[RuleDocument], list[SkillDocument], list[CommandDocument]]:
+def load_project_hooks(ai_dir: Path, diagnostics: list[Diagnostic]) -> list[HookSpec]:
+    hooks_dir = ai_dir / "hooks"
+    if not hooks_dir.exists():
+        return []
+    hooks: list[HookSpec] = []
+    for path in sorted([*hooks_dir.glob("*.yaml"), *hooks_dir.glob("*.yml")]):
+        try:
+            hooks.append(load_hook(path, ai_dir))
+        except Exception as exc:
+            diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Invalid hook config: {exc}", path=path))
+    return hooks
+
+
+def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackConfig], list[RuleDocument], list[SkillDocument], list[CommandDocument], list[HookSpec]]:
     packs_dir = ai_dir / "packs"
     pack_configs: list[PackConfig] = []
     rules: list[RuleDocument] = []
     skills: list[SkillDocument] = []
     commands: list[CommandDocument] = []
+    hooks: list[HookSpec] = []
     if not packs_dir.exists():
-        return pack_configs, rules, skills, commands
+        return pack_configs, rules, skills, commands, hooks
 
     for pack_file in sorted(packs_dir.glob("*/pack.yaml")):
         try:
@@ -131,7 +161,12 @@ def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackCo
             skills.append(load_skill(skill_path, ai_dir, source="pack", pack_name=pack.name))
         for command_path in sorted((pack_dir / "commands").glob("*.md")):
             commands.append(load_command(command_path, ai_dir, source="pack", pack_name=pack.name))
-    return pack_configs, rules, skills, commands
+        for hook_path in sorted([*(pack_dir / "hooks").glob("*.yaml"), *(pack_dir / "hooks").glob("*.yml")]):
+            try:
+                hooks.append(load_hook(hook_path, ai_dir, source="pack", pack_name=pack.name))
+            except Exception as exc:
+                diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Invalid pack hook config: {exc}", path=hook_path))
+    return pack_configs, rules, skills, commands, hooks
 
 
 def load_source(root: Path | str = ".") -> SourceContext:
@@ -150,10 +185,11 @@ def load_source(root: Path | str = ".") -> SourceContext:
         config = RuleBridgeConfig()
         diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Missing {CONFIG_DIR}/{CONFIG_FILE}", path=config_path))
 
-    packs, pack_rules, pack_skills, pack_commands = load_packs(ai_dir, diagnostics)
+    packs, pack_rules, pack_skills, pack_commands, pack_hooks = load_packs(ai_dir, diagnostics)
     project_rules = load_project_rules(ai_dir, config, diagnostics)
     project_skills = load_project_skills(ai_dir)
     project_commands = load_project_commands(ai_dir)
+    project_hooks = load_project_hooks(ai_dir, diagnostics)
 
     return SourceContext(
         root=root_path,
@@ -162,6 +198,7 @@ def load_source(root: Path | str = ".") -> SourceContext:
         rules=[*pack_rules, *project_rules],
         skills=[*pack_skills, *project_skills],
         commands=[*pack_commands, *project_commands],
+        hooks=[*pack_hooks, *project_hooks],
         packs=packs,
         diagnostics=diagnostics,
     )

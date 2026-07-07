@@ -80,6 +80,8 @@ def write_file(root: Path, generated: GeneratedFile, *, dry_run: bool = False, f
         return WriteResult(generated.path, "dry-run", f"would {status}")
     full_path.parent.mkdir(parents=True, exist_ok=True)
     full_path.write_text(desired, encoding="utf-8", newline="\n")
+    if generated.path.parts and generated.path.parts[0] == ".githooks":
+        full_path.chmod(0o755)
     return WriteResult(generated.path, status, status)
 
 

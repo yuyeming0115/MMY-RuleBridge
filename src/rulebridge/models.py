@@ -64,6 +64,16 @@ class CommandDocument(BaseModel):
     pack_name: str | None = None
 
 
+class HookSpec(BaseModel):
+    name: str
+    event: str
+    path: Path
+    steps: list[dict[str, Any]] = Field(default_factory=list)
+    targets: list[str] = Field(default_factory=list)
+    source: Literal["project", "pack"] = "project"
+    pack_name: str | None = None
+
+
 class PackConfig(BaseModel):
     name: str
     title: str | None = None
@@ -82,6 +92,7 @@ class SourceContext(BaseModel):
     rules: list[RuleDocument] = Field(default_factory=list)
     skills: list[SkillDocument] = Field(default_factory=list)
     commands: list[CommandDocument] = Field(default_factory=list)
+    hooks: list[HookSpec] = Field(default_factory=list)
     packs: list[PackConfig] = Field(default_factory=list)
     diagnostics: list[Diagnostic] = Field(default_factory=list)
 

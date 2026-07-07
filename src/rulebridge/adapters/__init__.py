@@ -6,6 +6,7 @@ from rulebridge.adapters.codebuddy import CodeBuddyAdapter
 from rulebridge.adapters.codex import CodexAdapter
 from rulebridge.adapters.cursor import CursorAdapter
 from rulebridge.adapters.generic import GenericAdapter
+from rulebridge.adapters.git import GitAdapter
 from rulebridge.adapters.trae import TraeAdapter
 from rulebridge.adapters.workbuddy import WorkBuddyAdapter
 from rulebridge.adapters.zcode import ZCodeAdapter
@@ -17,6 +18,7 @@ ADAPTERS: dict[str, TargetAdapter] = {
         ClaudeAdapter(),
         CursorAdapter(),
         GenericAdapter(),
+        GitAdapter(),
         ZCodeAdapter(),
         TraeAdapter(),
         CodeBuddyAdapter(),

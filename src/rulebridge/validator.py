@@ -21,6 +21,7 @@ SECRET_KEYWORDS = [
 ]
 
 SENSITIVE_PATTERNS = [".env", ".pem", ".key", ".p12", ".pfx"]
+SUPPORTED_HOOK_EVENTS = {"before_commit", "before_push"}
 
 
 def contains_sensitive_assignment(content: str, keyword: str) -> bool:
@@ -69,10 +70,21 @@ def scan_sensitive_content(source: SourceContext) -> list[Diagnostic]:
     return diagnostics
 
 
+def validate_hooks(source: SourceContext) -> list[Diagnostic]:
+    diagnostics: list[Diagnostic] = []
+    for hook in source.hooks:
+        if hook.event not in SUPPORTED_HOOK_EVENTS:
+            diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Unsupported hook event '{hook.event}' will not generate a Git hook", path=source.ai_dir / hook.path))
+        if not hook.steps:
+            diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Hook has no steps: {hook.path}", path=source.ai_dir / hook.path))
+    return diagnostics
+
+
 def validate_source(source: SourceContext, target: str | None = None, files: list[GeneratedFile] | None = None) -> list[Diagnostic]:
     diagnostics = [*source.diagnostics]
     diagnostics.extend(validate_targets(source, target))
     diagnostics.extend(scan_sensitive_content(source))
+    diagnostics.extend(validate_hooks(source))
     if files is not None:
         diagnostics.extend(validate_generated_paths(source, files))
     return diagnostics
