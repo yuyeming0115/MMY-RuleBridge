@@ -6,7 +6,9 @@ from rulebridge.cli import app
 from rulebridge.doctor import doctor_source
 from rulebridge.generator import render_files
 from rulebridge.pack import set_pack_enabled
+from rulebridge.service import inspect_project, preview_diff, sync_project
 from rulebridge.source import load_source
+from rulebridge.web import render_home
 from rulebridge.validator import Severity, validate_source
 from rulebridge.writer import START, desired_file_content, replace_managed_block
 
@@ -227,3 +229,26 @@ def test_doctor_command_outputs_no_issues_for_clean_project(tmp_path: Path, caps
     assert app(["doctor", "--root", str(tmp_path), "--target", "codex"]) == 0
     output = capsys.readouterr().out
     assert "Doctor found no issues" in output
+
+
+def test_service_preview_and_dry_run(tmp_path: Path) -> None:
+    make_source(tmp_path)
+    info = inspect_project(tmp_path, "codex")
+    assert info["source"].config.project.name == "Test Project"
+    diagnostics, diffs = preview_diff(tmp_path, "codex")
+    assert not any(item.is_error for item in diagnostics)
+    assert diffs
+    diagnostics, results = sync_project(tmp_path, "codex", dry_run=True)
+    assert not any(item.is_error for item in diagnostics)
+    assert results[0].status == "dry-run"
+
+
+def test_web_home_contains_key_controls(tmp_path: Path) -> None:
+    make_source(tmp_path)
+    html = render_home(str(tmp_path), target="codex", action="inspect")
+    assert "RuleBridge Web" in html
+    assert "Validate" in html
+    assert "Doctor" in html
+    assert "Preview Diff" in html
+    assert "Dry Run Sync" in html
+    assert "MCP Servers" in html

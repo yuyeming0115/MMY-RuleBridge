@@ -210,6 +210,31 @@ rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target git
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --target mcp
 ```
 
+## Web 可视化界面
+
+小白用户推荐使用本地 Web 页面：
+
+```powershell
+rulebridge web --root "D:/GitWork/RuleBridgeTest"
+```
+
+默认会打开浏览器访问：
+
+```text
+http://127.0.0.1:8765/
+```
+
+页面支持：
+
+- 查看项目概览、rules、skills、commands、hooks、MCP servers 数量。
+- 选择 target。
+- 点击 Validate / Doctor。
+- 点击 Preview Diff 预览差异。
+- 点击 Dry Run Sync 查看将写入哪些文件。
+- 点击 Sync 真正写入，页面会二次确认。
+
+Web UI 默认只监听 `127.0.0.1`，用于本机操作，不会自动写用户主目录配置。
+
 ## 推荐测试流程
 
 ### PowerShell
@@ -434,7 +459,6 @@ python -m pytest
 
 ## 当前暂未实现
 
-- GUI / TUI。
 - Qoder Memory 导出。
 - 用户级目录自动写入。
 - 在线导入外部经验包。

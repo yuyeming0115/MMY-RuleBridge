@@ -10,6 +10,7 @@ from .models import Diagnostic, Severity
 from .pack import list_packs, pack_content_diff, set_pack_enabled
 from .source import CONFIG_DIR, CONFIG_FILE, load_source
 from .validator import has_errors, validate_source, validate_targets
+from .web import run_web
 from .writer import diff_for_file, write_files
 
 
@@ -181,6 +182,11 @@ def cmd_sync(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_web(args: argparse.Namespace) -> int:
+    run_web(args.root, host=args.host, port=args.port, open_browser=not args.no_open)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="rulebridge", description="Bridge one .ai-agent source into multiple AI agent rule formats.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -255,6 +261,13 @@ def build_parser() -> argparse.ArgumentParser:
     sync_parser.add_argument("--force", action="store_true", help="Overwrite existing generated files.")
     sync_parser.add_argument("--insert-managed-block", action="store_true", help="Append a managed block to existing Markdown files.")
     sync_parser.set_defaults(func=cmd_sync)
+
+    web_parser = sub.add_parser("web", help="Start the local RuleBridge Web UI.")
+    web_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    web_parser.add_argument("--host", default="127.0.0.1", help="Host to bind. Keep 127.0.0.1 for local-only use.")
+    web_parser.add_argument("--port", type=int, default=8765, help="Port to bind.")
+    web_parser.add_argument("--no-open", action="store_true", help="Do not open the browser automatically.")
+    web_parser.set_defaults(func=cmd_web)
 
     return parser
 
