@@ -111,6 +111,12 @@ rulebridge list-targets
 rulebridge pack list --root "D:/GitWork/RuleBridgeTest"
 ```
 
+预览 pack 会带来的规则/技能内容：
+
+```powershell
+rulebridge pack diff example-pack --root "D:/GitWork/RuleBridgeTest"
+```
+
 启用 pack：
 
 ```powershell

@@ -6,7 +6,7 @@ from pathlib import Path
 from .adapters import list_targets as adapter_names
 from .generator import render_files
 from .models import Diagnostic, Severity
-from .pack import list_packs, set_pack_enabled
+from .pack import list_packs, pack_content_diff, set_pack_enabled
 from .source import CONFIG_DIR, CONFIG_FILE, load_source
 from .validator import has_errors, validate_source, validate_targets
 from .writer import diff_for_file, write_files
@@ -87,6 +87,15 @@ def cmd_pack_disable(args: argparse.Namespace) -> int:
     return 1 if diagnostic.is_error else 0
 
 
+def cmd_pack_diff(args: argparse.Namespace) -> int:
+    output, diagnostic = pack_content_diff(args.root.resolve(), args.name)
+    if diagnostic is not None:
+        print_diagnostic(diagnostic)
+        return 1 if diagnostic.is_error else 0
+    print(output, end="")
+    return 0
+
+
 def cmd_list_rules(args: argparse.Namespace) -> int:
     source = load_source(args.root)
     abort_on_errors(source.diagnostics)
@@ -157,6 +166,11 @@ def build_parser() -> argparse.ArgumentParser:
     pack_disable_parser.add_argument("name", help="Pack name.")
     pack_disable_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
     pack_disable_parser.set_defaults(func=cmd_pack_disable)
+
+    pack_diff_parser = pack_sub.add_parser("diff", help="Show rules and skills provided by a pack.")
+    pack_diff_parser.add_argument("name", help="Pack name.")
+    pack_diff_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")
+    pack_diff_parser.set_defaults(func=cmd_pack_diff)
 
     rules_parser = sub.add_parser("list-rules", help="List loaded rules.")
     rules_parser.add_argument("--root", type=Path, default=Path("."), help="Project root directory.")

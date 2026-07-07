@@ -121,3 +121,12 @@ def test_pack_list_command_outputs_pack(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "demo" in output
     assert "enabled" in output
+
+
+def test_pack_diff_command_outputs_pack_content(tmp_path: Path, capsys) -> None:
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\nenabled: false\n")
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "rules" / "review.md", "# Review\n\nCheck changes.\n")
+    assert app(["pack", "diff", "demo", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "packs/demo/rules/review.md" in output.replace("\\", "/")
+    assert "+# Review" in output
