@@ -46,9 +46,20 @@ def check_duplicate_skills(source: SourceContext) -> list[Diagnostic]:
     return diagnostics
 
 
+def check_duplicate_commands(source: SourceContext) -> list[Diagnostic]:
+    diagnostics: list[Diagnostic] = []
+    by_name: dict[str, list[str]] = defaultdict(list)
+    for command in source.commands:
+        by_name[command.name].append(str(command.path))
+    for name, paths in by_name.items():
+        if len(paths) > 1:
+            diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Duplicate command name '{name}': {', '.join(paths)}"))
+    return diagnostics
+
+
 def check_private_paths(source: SourceContext) -> list[Diagnostic]:
     diagnostics: list[Diagnostic] = []
-    for doc in [*source.rules, *source.skills]:
+    for doc in [*source.rules, *source.skills, *source.commands]:
         if PRIVATE_PATH_RE.search(doc.content):
             diagnostics.append(Diagnostic(severity=Severity.WARN, message=f"Private-looking local path found in {doc.path}", path=source.ai_dir / doc.path))
     return diagnostics
@@ -73,6 +84,10 @@ def check_target_usefulness(source: SourceContext, target: str | None = None) ->
         for name in targets:
             if name in {"zcode", "trae", "codebuddy", "workbuddy"}:
                 diagnostics.append(Diagnostic(severity=Severity.INFO, message=f"Target '{name}' has no skills to render"))
+    if not source.commands:
+        for name in targets:
+            if name in {"zcode", "claude", "codex", "generic"}:
+                diagnostics.append(Diagnostic(severity=Severity.INFO, message=f"Target '{name}' has no commands to render"))
     return diagnostics
 
 
@@ -100,6 +115,7 @@ def doctor_source(source: SourceContext, target: str | None = None) -> list[Diag
         return diagnostics
     diagnostics.extend(check_duplicate_rules(source))
     diagnostics.extend(check_duplicate_skills(source))
+    diagnostics.extend(check_duplicate_commands(source))
     diagnostics.extend(check_private_paths(source))
     diagnostics.extend(check_pack_review_status(source))
     diagnostics.extend(check_target_usefulness(source, target))

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .models import RuleDocument, SkillDocument, SourceContext
+from .models import CommandDocument, RuleDocument, SkillDocument, SourceContext
 
 
 def render_rule_bundle(source: SourceContext, heading: str) -> str:
@@ -24,6 +24,13 @@ def render_rule_bundle(source: SourceContext, heading: str) -> str:
         for skill in source.skills:
             origin = f"pack:{skill.pack_name}" if skill.source == "pack" else "project"
             parts.append(f"- `{skill.name}` from `{skill.path}` ({origin})")
+        parts.append("")
+    if source.commands:
+        parts.append("## Commands")
+        parts.append("")
+        for command in source.commands:
+            origin = f"pack:{command.pack_name}" if command.source == "pack" else "project"
+            parts.append(f"- `/{command.name}` from `{command.path}` ({origin})")
         parts.append("")
     return "\n".join(parts).rstrip() + "\n"
 
@@ -51,4 +58,13 @@ def skill_index(skills: list[SkillDocument]) -> str:
     lines = ["## Available Skills", ""]
     for skill in skills:
         lines.append(f"- `{skill.name}`: `{skill.path}`")
+    return "\n".join(lines) + "\n"
+
+
+def command_index(commands: list[CommandDocument]) -> str:
+    if not commands:
+        return ""
+    lines = ["## Available Commands", ""]
+    for command in commands:
+        lines.append(f"- `/{command.name}`: `{command.path}`")
     return "\n".join(lines) + "\n"

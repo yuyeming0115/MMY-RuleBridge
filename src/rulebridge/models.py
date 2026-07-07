@@ -56,6 +56,14 @@ class SkillDocument(BaseModel):
     pack_name: str | None = None
 
 
+class CommandDocument(BaseModel):
+    name: str
+    path: Path
+    content: str
+    source: Literal["project", "pack"] = "project"
+    pack_name: str | None = None
+
+
 class PackConfig(BaseModel):
     name: str
     title: str | None = None
@@ -73,6 +81,7 @@ class SourceContext(BaseModel):
     config: RuleBridgeConfig
     rules: list[RuleDocument] = Field(default_factory=list)
     skills: list[SkillDocument] = Field(default_factory=list)
+    commands: list[CommandDocument] = Field(default_factory=list)
     packs: list[PackConfig] = Field(default_factory=list)
     diagnostics: list[Diagnostic] = Field(default_factory=list)
 

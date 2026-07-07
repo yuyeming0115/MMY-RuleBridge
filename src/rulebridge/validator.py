@@ -55,7 +55,7 @@ def validate_generated_paths(source: SourceContext, files: list[GeneratedFile]) 
 
 def scan_sensitive_content(source: SourceContext) -> list[Diagnostic]:
     diagnostics: list[Diagnostic] = []
-    documents = [*source.rules, *source.skills]
+    documents = [*source.rules, *source.skills, *source.commands]
     for doc in documents:
         lowered_path = str(doc.path).lower()
         for pattern in SENSITIVE_PATTERNS:

@@ -4,17 +4,17 @@ RuleBridge 是一个多 Agent 规则桥接 CLI 工具。它让你只维护一份
 
 本项目计划开发一个面向 AI 编程 Agent 的统一规则、钩子、技能、插件与 MCP 配置桥接工具。它的核心目标是：用户只维护一份结构化源配置，然后由工具自动生成适配不同 Agent 的配置文件，例如 `AGENTS.md`、`CLAUDE.md`、Cursor Rules、Trae Rules、MCP 配置、Git Hook 配置等。
 
-当前版本是第一版 MVP，重点支持 Rules 与 Skills 桥接。
+当前版本是第一版 MVP，重点支持 Rules、Skills 与 Commands 桥接。
 
 ## 当前支持的目标
 
 | Target | 输出 |
 |---|---|
 | `codex` | `AGENTS.md` |
-| `claude` | `CLAUDE.md` |
+| `claude` | `CLAUDE.md`、`.claude/commands/*.md` |
 | `cursor` | `.cursor/rules/*.mdc` |
 | `generic` | `AI_RULES.md` |
-| `zcode` | `.zcode/skills/<skill>/SKILL.md` |
+| `zcode` | `.zcode/skills/<skill>/SKILL.md`、`.zcode/commands/*.md` |
 | `trae` | `.trae/skills/<skill>/SKILL.md` |
 | `codebuddy` | `.codebuddy-plugin/rules/*.md`、`.codebuddy-plugin/skills/*/SKILL.md` |
 | `workbuddy` | `.workbuddy-plugin/rules/*.md`、`.workbuddy-plugin/skills/*/SKILL.md` |
@@ -80,6 +80,8 @@ rulebridge init --root "D:/GitWork/RuleBridgeTest"
 ├─ skills/
 │  └─ example-skill/
 │     └─ SKILL.md
+├─ commands/
+│  └─ review.md
 └─ packs/
    └─ example-pack/
       └─ pack.yaml
@@ -149,7 +151,13 @@ rulebridge pack disable example-pack --root "D:/GitWork/RuleBridgeTest"
 rulebridge list-rules --root "D:/GitWork/RuleBridgeTest"
 ```
 
-### 7. 预览差异
+### 7. 查看已加载命令
+
+```powershell
+rulebridge list-commands --root "D:/GitWork/RuleBridgeTest"
+```
+
+### 8. 预览差异
 
 ```powershell
 rulebridge diff --root "D:/GitWork/RuleBridgeTest"
@@ -161,13 +169,13 @@ rulebridge diff --root "D:/GitWork/RuleBridgeTest"
 rulebridge diff --root "D:/GitWork/RuleBridgeTest" --target codex
 ```
 
-### 8. 干运行同步
+### 9. 干运行同步
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest" --dry-run
 ```
 
-### 9. 真正生成
+### 10. 真正生成
 
 ```powershell
 rulebridge sync --root "D:/GitWork/RuleBridgeTest"
@@ -263,6 +271,27 @@ profile: dev
 
 ```text
 .ai-agent/skills/<skill-name>/SKILL.md
+```
+
+命令文件放在：
+
+```text
+.ai-agent/commands/*.md
+```
+
+命令文件支持 YAML frontmatter，正文可使用 `$ARGUMENTS`：
+
+```md
+---
+description: Review the given scope with project rules.
+argument-hint: "[scope]"
+skills:
+  - example-skill
+---
+
+Review this scope using the project rules and report risks first:
+
+$ARGUMENTS
 ```
 
 可选规则包放在：

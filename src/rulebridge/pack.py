@@ -53,7 +53,11 @@ def pack_content_diff(root: Path, name: str) -> tuple[str, Diagnostic | None]:
         return "", Diagnostic(severity=Severity.ERROR, message=f"Pack does not exist: {name}", path=path)
 
     pack_dir = path.parent
-    files = [*sorted((pack_dir / "rules").glob("*.md")), *sorted((pack_dir / "skills").glob("*/SKILL.md"))]
+    files = [
+        *sorted((pack_dir / "rules").glob("*.md")),
+        *sorted((pack_dir / "skills").glob("*/SKILL.md")),
+        *sorted((pack_dir / "commands").glob("*.md")),
+    ]
     if not files:
         return f"# Pack {name} has no rules or skills.\n", None
 

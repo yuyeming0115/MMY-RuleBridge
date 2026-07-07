@@ -27,6 +27,10 @@ def make_source(root: Path) -> None:
         root / ".ai-agent" / "skills" / "demo" / "SKILL.md",
         """---\nname: demo\ndescription: Demo skill.\n---\n\n# Demo\n""",
     )
+    write(
+        root / ".ai-agent" / "commands" / "review.md",
+        """---\ndescription: Review a scope.\nargument-hint: "[scope]"\n---\n\nReview $ARGUMENTS.\n""",
+    )
 
 
 def test_load_source_respects_include_order(tmp_path: Path) -> None:
@@ -34,6 +38,7 @@ def test_load_source_respects_include_order(tmp_path: Path) -> None:
     source = load_source(tmp_path)
     assert [rule.name for rule in source.rules] == ["b", "a"]
     assert [skill.name for skill in source.skills] == ["demo"]
+    assert [command.name for command in source.commands] == ["review"]
 
 
 def test_default_rule_scan_when_no_include(tmp_path: Path) -> None:
@@ -50,6 +55,7 @@ def test_pack_enabled_and_disabled(tmp_path: Path) -> None:
         "name: enabled\nenabled: true\n",
     )
     write(tmp_path / ".ai-agent" / "packs" / "enabled" / "rules" / "p.md", "# Pack Rule\n")
+    write(tmp_path / ".ai-agent" / "packs" / "enabled" / "commands" / "ship.md", "---\ndescription: Ship.\n---\n\nShip it.\n")
     write(
         tmp_path / ".ai-agent" / "packs" / "disabled" / "pack.yaml",
         "name: disabled\nenabled: false\n",
@@ -57,6 +63,7 @@ def test_pack_enabled_and_disabled(tmp_path: Path) -> None:
     write(tmp_path / ".ai-agent" / "packs" / "disabled" / "rules" / "off.md", "# Off\n")
     source = load_source(tmp_path)
     assert [rule.name for rule in source.rules] == ["p", "b", "a"]
+    assert [command.name for command in source.commands] == ["ship", "review"]
 
 
 def test_render_target_paths(tmp_path: Path) -> None:
@@ -67,6 +74,8 @@ def test_render_target_paths(tmp_path: Path) -> None:
     assert "CLAUDE.md" in paths
     assert ".cursor/rules/a.mdc" in paths
     assert ".zcode/skills/demo/SKILL.md" in paths
+    assert ".zcode/commands/review.md" in paths
+    assert ".claude/commands/review.md" in paths
     assert ".trae/skills/demo/SKILL.md" in paths
     assert ".codebuddy-plugin/rules/a.md" in paths
     assert ".workbuddy-plugin/skills/demo/SKILL.md" in paths
@@ -116,6 +125,14 @@ def test_set_pack_enabled_toggles_pack_yaml(tmp_path: Path) -> None:
     assert "enabled: true" in (tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml").read_text(encoding="utf-8")
 
 
+def test_list_commands_command_outputs_command(tmp_path: Path, capsys) -> None:
+    make_source(tmp_path)
+    assert app(["list-commands", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "review" in output
+    assert "commands" in output
+
+
 def test_pack_list_command_outputs_pack(tmp_path: Path, capsys) -> None:
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\ntitle: Demo Pack\nenabled: true\n")
     assert app(["pack", "list", "--root", str(tmp_path)]) == 0
@@ -127,9 +144,12 @@ def test_pack_list_command_outputs_pack(tmp_path: Path, capsys) -> None:
 def test_pack_diff_command_outputs_pack_content(tmp_path: Path, capsys) -> None:
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "pack.yaml", "name: demo\nenabled: false\n")
     write(tmp_path / ".ai-agent" / "packs" / "demo" / "rules" / "review.md", "# Review\n\nCheck changes.\n")
+    write(tmp_path / ".ai-agent" / "packs" / "demo" / "commands" / "ship.md", "---\ndescription: Ship.\n---\n\nShip.\n")
     assert app(["pack", "diff", "demo", "--root", str(tmp_path)]) == 0
     output = capsys.readouterr().out
-    assert "packs/demo/rules/review.md" in output.replace("\\", "/")
+    normalized = output.replace("\\", "/")
+    assert "packs/demo/rules/review.md" in normalized
+    assert "packs/demo/commands/ship.md" in normalized
     assert "+# Review" in output
 
 

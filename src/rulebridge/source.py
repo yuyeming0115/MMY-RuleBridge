@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 
 from .models import (
+    CommandDocument,
     Diagnostic,
     PackConfig,
     RuleBridgeConfig,
@@ -60,6 +61,18 @@ def load_skill(path: Path, ai_dir: Path, source: str = "project", pack_name: str
     )
 
 
+def load_command(path: Path, ai_dir: Path, source: str = "project", pack_name: str | None = None) -> CommandDocument:
+    content = path.read_text(encoding="utf-8")
+    rel = path.relative_to(ai_dir) if path.is_relative_to(ai_dir) else path
+    return CommandDocument(
+        name=path.stem,
+        path=rel,
+        content=content.strip() + "\n",
+        source=source,  # type: ignore[arg-type]
+        pack_name=pack_name,
+    )
+
+
 def load_project_rules(ai_dir: Path, config: RuleBridgeConfig, diagnostics: list[Diagnostic]) -> list[RuleDocument]:
     rules_dir = ai_dir / "rules"
     rules: list[RuleDocument] = []
@@ -86,13 +99,21 @@ def load_project_skills(ai_dir: Path) -> list[SkillDocument]:
     return [load_skill(path, ai_dir) for path in sorted(skills_dir.glob("*/SKILL.md"))]
 
 
-def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackConfig], list[RuleDocument], list[SkillDocument]]:
+def load_project_commands(ai_dir: Path) -> list[CommandDocument]:
+    commands_dir = ai_dir / "commands"
+    if not commands_dir.exists():
+        return []
+    return [load_command(path, ai_dir) for path in sorted(commands_dir.glob("*.md"))]
+
+
+def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackConfig], list[RuleDocument], list[SkillDocument], list[CommandDocument]]:
     packs_dir = ai_dir / "packs"
     pack_configs: list[PackConfig] = []
     rules: list[RuleDocument] = []
     skills: list[SkillDocument] = []
+    commands: list[CommandDocument] = []
     if not packs_dir.exists():
-        return pack_configs, rules, skills
+        return pack_configs, rules, skills, commands
 
     for pack_file in sorted(packs_dir.glob("*/pack.yaml")):
         try:
@@ -108,7 +129,9 @@ def load_packs(ai_dir: Path, diagnostics: list[Diagnostic]) -> tuple[list[PackCo
             rules.append(load_rule(rule_path, ai_dir, source="pack", pack_name=pack.name))
         for skill_path in sorted((pack_dir / "skills").glob("*/SKILL.md")):
             skills.append(load_skill(skill_path, ai_dir, source="pack", pack_name=pack.name))
-    return pack_configs, rules, skills
+        for command_path in sorted((pack_dir / "commands").glob("*.md")):
+            commands.append(load_command(command_path, ai_dir, source="pack", pack_name=pack.name))
+    return pack_configs, rules, skills, commands
 
 
 def load_source(root: Path | str = ".") -> SourceContext:
@@ -127,9 +150,10 @@ def load_source(root: Path | str = ".") -> SourceContext:
         config = RuleBridgeConfig()
         diagnostics.append(Diagnostic(severity=Severity.ERROR, message=f"Missing {CONFIG_DIR}/{CONFIG_FILE}", path=config_path))
 
-    packs, pack_rules, pack_skills = load_packs(ai_dir, diagnostics)
+    packs, pack_rules, pack_skills, pack_commands = load_packs(ai_dir, diagnostics)
     project_rules = load_project_rules(ai_dir, config, diagnostics)
     project_skills = load_project_skills(ai_dir)
+    project_commands = load_project_commands(ai_dir)
 
     return SourceContext(
         root=root_path,
@@ -137,6 +161,7 @@ def load_source(root: Path | str = ".") -> SourceContext:
         config=config,
         rules=[*pack_rules, *project_rules],
         skills=[*pack_skills, *project_skills],
+        commands=[*pack_commands, *project_commands],
         packs=packs,
         diagnostics=diagnostics,
     )

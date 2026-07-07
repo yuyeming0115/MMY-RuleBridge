@@ -11,4 +11,9 @@ class ClaudeAdapter(TargetAdapter):
     name = "claude"
 
     def render(self, context: RenderContext) -> list[GeneratedFile]:
-        return [GeneratedFile(path=Path("CLAUDE.md"), content=render_rule_bundle(context.source, "Claude Code Rules"))]
+        files = [GeneratedFile(path=Path("CLAUDE.md"), content=render_rule_bundle(context.source, "Claude Code Rules"))]
+        files.extend(
+            GeneratedFile(path=Path(".claude") / "commands" / f"{command.name}.md", content=command.content, managed=False)
+            for command in context.source.commands
+        )
+        return files
