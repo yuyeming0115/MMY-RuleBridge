@@ -257,6 +257,7 @@ def test_web_home_contains_key_controls(tmp_path: Path) -> None:
 def test_web_home_contains_app_layout_and_resources(tmp_path: Path) -> None:
     make_source(tmp_path)
     html = render_home(str(tmp_path), target="codex", action="inspect")
+    assert "theme-dark" in html
     assert "Dashboard" in html
     assert "Operations" in html
     assert "Resources" in html
@@ -267,3 +268,10 @@ def test_web_home_contains_app_layout_and_resources(tmp_path: Path) -> None:
     assert "review" in html
     assert "before_commit" in html
     assert "filesystem" in html
+
+
+def test_web_home_supports_light_theme(tmp_path: Path) -> None:
+    make_source(tmp_path)
+    html = render_home(str(tmp_path), target="codex", action="inspect", theme="light")
+    assert "theme-light" in html
+    assert "深色" in html
