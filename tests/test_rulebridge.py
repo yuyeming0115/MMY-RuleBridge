@@ -252,3 +252,18 @@ def test_web_home_contains_key_controls(tmp_path: Path) -> None:
     assert "Preview Diff" in html
     assert "Dry Run Sync" in html
     assert "MCP Servers" in html
+
+
+def test_web_home_contains_app_layout_and_resources(tmp_path: Path) -> None:
+    make_source(tmp_path)
+    html = render_home(str(tmp_path), target="codex", action="inspect")
+    assert "Dashboard" in html
+    assert "Operations" in html
+    assert "Resources" in html
+    assert "Generated Files" in html
+    assert "Diagnostics" in html
+    assert "B Rule" in html
+    assert "demo" in html
+    assert "review" in html
+    assert "before_commit" in html
+    assert "filesystem" in html
