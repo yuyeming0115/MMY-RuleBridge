@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rulebridge.api import diff_api, inspect_api, sync_api, targets_api
 from rulebridge.cli import app
 from rulebridge.doctor import doctor_source
 from rulebridge.generator import render_files
 from rulebridge.pack import set_pack_enabled
 from rulebridge.service import inspect_project, preview_diff, sync_project
 from rulebridge.source import load_source
-from rulebridge.web import render_home
+from rulebridge.web import asset_text, render_home
 from rulebridge.validator import Severity, validate_source
 from rulebridge.writer import START, desired_file_content, replace_managed_block
 
@@ -243,35 +244,34 @@ def test_service_preview_and_dry_run(tmp_path: Path) -> None:
     assert results[0].status == "dry-run"
 
 
-def test_web_home_contains_key_controls(tmp_path: Path) -> None:
-    make_source(tmp_path)
-    html = render_home(str(tmp_path), target="codex", action="inspect")
-    assert "RuleBridge Web" in html
-    assert "Validate" in html
-    assert "Doctor" in html
-    assert "Preview Diff" in html
-    assert "Dry Run Sync" in html
-    assert "MCP Servers" in html
-
-
-def test_web_home_contains_app_layout_and_resources(tmp_path: Path) -> None:
-    make_source(tmp_path)
-    html = render_home(str(tmp_path), target="codex", action="inspect")
-    assert "theme-dark" in html
-    assert "Dashboard" in html
-    assert "Operations" in html
-    assert "Resources" in html
-    assert "Generated Files" in html
-    assert "Diagnostics" in html
-    assert "B Rule" in html
-    assert "demo" in html
-    assert "review" in html
-    assert "before_commit" in html
-    assert "filesystem" in html
+def test_web_static_assets_are_available() -> None:
+    index = asset_text("index.html")
+    style = asset_text("style.css")
+    script = asset_text("app.js")
+    assert "RuleBridge Web" in index
+    assert "Dashboard" in index
+    assert "theme-dark" in style
+    assert "theme-light" in style
+    assert "Preview Diff" in index
+    assert "Dry Run Sync" in index
+    assert "/api/inspect" in script
 
 
 def test_web_home_supports_light_theme(tmp_path: Path) -> None:
     make_source(tmp_path)
     html = render_home(str(tmp_path), target="codex", action="inspect", theme="light")
     assert "theme-light" in html
-    assert "深色" in html
+
+
+def test_api_inspect_and_diff_and_dry_run(tmp_path: Path) -> None:
+    make_source(tmp_path)
+    inspected = inspect_api(tmp_path, "codex")
+    assert inspected["source"]["project"]["name"] == "Test Project"
+    assert any(rule["title"] == "B Rule" for rule in inspected["source"]["rules"])
+    assert any(server["name"] == "filesystem" for server in inspected["source"]["mcpServers"])
+    assert "codex" in targets_api()["targets"]
+    diffed = diff_api(tmp_path, "codex")
+    assert diffed["diffs"]
+    synced = sync_api(tmp_path, "codex", dry_run=True)
+    assert synced["results"]
+    assert synced["results"][0]["status"] == "dry-run"

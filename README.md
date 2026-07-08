@@ -235,6 +235,54 @@ http://127.0.0.1:8765/
 
 Web UI 默认只监听 `127.0.0.1`，用于本机操作，不会自动写用户主目录配置。
 
+Web 前端已拆成静态资源：
+
+```text
+src/rulebridge/web_assets/index.html
+src/rulebridge/web_assets/style.css
+src/rulebridge/web_assets/app.js
+```
+
+后端提供本地 JSON API：
+
+```text
+GET  /api/inspect
+GET  /api/validate
+GET  /api/doctor
+POST /api/diff
+POST /api/sync
+POST /api/init
+GET  /api/targets
+GET  /api/packs
+```
+
+## 构建单 exe
+
+Windows 下可运行：
+
+```powershell
+./build.ps1
+```
+
+生成：
+
+```text
+dist/rulebridge.exe
+```
+
+构建脚本会自动 smoke test：
+
+```powershell
+./dist/rulebridge.exe --help
+./dist/rulebridge.exe list-targets
+```
+
+小白用户可直接运行：
+
+```powershell
+./dist/rulebridge.exe web --root "D:/GitWork/RuleBridgeTest"
+```
+
 ## 推荐测试流程
 
 ### PowerShell
