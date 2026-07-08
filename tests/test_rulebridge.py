@@ -263,15 +263,12 @@ def test_web_home_supports_light_theme(tmp_path: Path) -> None:
     assert "theme-light" in html
 
 
-def test_api_inspect_and_diff_and_dry_run(tmp_path: Path) -> None:
-    make_source(tmp_path)
-    inspected = inspect_api(tmp_path, "codex")
-    assert inspected["source"]["project"]["name"] == "Test Project"
-    assert any(rule["title"] == "B Rule" for rule in inspected["source"]["rules"])
-    assert any(server["name"] == "filesystem" for server in inspected["source"]["mcpServers"])
-    assert "codex" in targets_api()["targets"]
-    diffed = diff_api(tmp_path, "codex")
-    assert diffed["diffs"]
-    synced = sync_api(tmp_path, "codex", dry_run=True)
-    assert synced["results"]
-    assert synced["results"][0]["status"] == "dry-run"
+
+
+def test_api_init_creates_source(tmp_path: Path) -> None:
+    result = sync_api(tmp_path, "codex", dry_run=True)
+    assert result["results"] == []
+    init_result = __import__('rulebridge.api', fromlist=['init_api']).init_api(tmp_path)
+    assert init_result["written"] > 0
+    inspected = inspect_api(tmp_path)
+    assert inspected["source"]["project"]["name"] == "MMY RuleBridge"

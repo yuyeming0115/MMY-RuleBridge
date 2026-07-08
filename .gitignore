@@ -35,3 +35,10 @@ config.local.*
 
 # RuleBridge local generated demo outputs
 .rulebridge-backups/
+
+# 项目内部 / 其它工具产物（不提交）
+.workbuddy/
+.zcode/
+
+# ImageGen 生成的原始图标素材（构建只用 .ico/.icns）
+src/rulebridge/web_assets/A_*.png

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import threading
+import time as _time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
@@ -31,6 +33,7 @@ class RuleBridgeHandler(BaseHTTPRequestHandler):
     server_version = "RuleBridgeWeb/0.2"
 
     def do_GET(self) -> None:  # noqa: N802
+        self.server.last_request = _time.time()  # type: ignore[attr-defined]
         parsed = urlparse(self.path)
         if parsed.path in {"/", "/index.html"}:
             theme = parse_qs(parsed.query).get("theme", ["dark"])[0]
@@ -45,6 +48,7 @@ class RuleBridgeHandler(BaseHTTPRequestHandler):
         self.send_error(404, "Not found")
 
     def do_POST(self) -> None:  # noqa: N802
+        self.server.last_request = _time.time()  # type: ignore[attr-defined]
         parsed = urlparse(self.path)
         if not parsed.path.startswith("/api/"):
             self.send_error(404, "Not found")
@@ -102,6 +106,16 @@ class RuleBridgeHandler(BaseHTTPRequestHandler):
                 self.send_json(api.pack_set_api(root, str(payload.get("name", "")), False))
             elif path == "/api/pack/diff":
                 self.send_json(api.pack_diff_api(root, str(payload.get("name", ""))))
+            elif path == "/api/shutdown":
+                self.send_json({"ok": True})
+                import threading
+
+                def _shutdown() -> None:
+                    import time
+                    time.sleep(0.2)
+                    self.server.shutdown()
+
+                threading.Thread(target=_shutdown, daemon=True).start()
             else:
                 self.send_error(404, "API endpoint not found")
         except Exception as exc:  # pragma: no cover - defensive server boundary
@@ -124,11 +138,36 @@ class RuleBridgeHandler(BaseHTTPRequestHandler):
         print("RuleBridge Web:", format % args)
 
 
-def run_web(root: Path | str = ".", host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
+def run_web(root: Path | str = ".", host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True, idle_timeout: int = 300) -> None:
+    """Start the RuleBridge web server.
+
+    Args:
+        root: Project root directory.
+        host: Bind address (default 127.0.0.1).
+        port: Bind port (default 8765).
+        open_browser: Whether to auto-open browser.
+        idle_timeout: Seconds of no requests before auto-shutdown. 0 disables.
+    """
     server = ThreadingHTTPServer((host, port), RuleBridgeHandler)
     server.root = Path(root).resolve()  # type: ignore[attr-defined]
+    server.last_request = _time.time()  # type: ignore[attr-defined]
     url = f"http://{host}:{port}/?{urlencode({'root': str(server.root)})}"
     print(f"RuleBridge Web running at {url}")
+    if idle_timeout > 0:
+        print(f"Idle timeout: {idle_timeout}s (auto-shutdown after no activity)")
+
+    def _idle_watcher() -> None:
+        while getattr(server, "_shutdown_requested", False) is False:
+            _time.sleep(5)
+            elapsed = _time.time() - server.last_request  # type: ignore[attr-defined]
+            if elapsed >= idle_timeout:
+                print(f"RuleBridge: no requests for {elapsed:.0f}s, shutting down.")
+                server.shutdown()
+                break
+
+    if idle_timeout > 0:
+        threading.Thread(target=_idle_watcher, daemon=True).start()
+
     if open_browser:
         webbrowser.open(url)
     try:

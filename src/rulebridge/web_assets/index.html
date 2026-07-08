@@ -9,45 +9,53 @@
 <body class="theme-dark">
 <div class="shell">
   <header class="topnav">
-    <div class="brandbox"><div class="logo">🌉</div><div><div class="brand">RuleBridge</div><div class="tagline">AI Agent 配置桥接控制台</div></div></div>
+    <div class="brandbox"><div class="logo">🌉</div><div><div class="brand">RuleBridge</div><div class="tagline" data-i18n="brand.tagline">AI Agent 配置桥接控制台</div></div><div class="icon-btn-group" id="iconBtnGroup"></div></div>
     <nav class="toplinks">
-      <a class="nav-chip" href="#dashboard">Dashboard</a>
-      <a class="nav-chip" href="#operations">Operations</a>
-      <a class="nav-chip" href="#resources">Resources</a>
-      <a class="nav-chip" href="#generated">Generated</a>
-      <a class="nav-chip" href="#diagnostics">Diagnostics</a>
-      <a class="nav-chip" href="#packs">Packs</a>
-      <a class="nav-chip" href="#results">Results</a>
+      <a class="nav-chip" href="#dashboard" data-i18n="nav.dashboard">Dashboard</a>
+      <a class="nav-chip" href="#operations" data-i18n="nav.operations">Operations</a>
+      <a class="nav-chip" href="#resources" data-i18n="nav.resources">Resources</a>
+      <a class="nav-chip" href="#generated" data-i18n="nav.generated">Generated</a>
+      <a class="nav-chip" href="#diagnostics" data-i18n="nav.diagnostics">Diagnostics</a>
+      <a class="nav-chip" href="#packs" data-i18n="nav.packs">Packs</a>
+      <a class="nav-chip" href="#results" data-i18n="nav.results">Results</a>
     </nav>
     <div class="topstats" id="topstats"></div>
   </header>
   <div class="workspace">
     <aside class="left-panel">
       <section class="panel-section">
-        <h2>Project Settings</h2>
-        <label>Project Root <input type="text" id="rootInput"></label>
-        <label>Target <select id="targetSelect"><option value="">all targets</option></select></label>
-        <label class="check"><input type="checkbox" id="forceInput"> force overwrite</label>
-        <label class="check"><input type="checkbox" id="insertInput"> insert managed block</label>
+        <h2 data-i18n="settings.title">Project Settings</h2>
+        <label><span data-i18n="settings.root">Project Root</span> <input type="text" id="rootInput"></label>
+        <label><span data-i18n="settings.target">Target</span> <select id="targetSelect"><option value="">all targets</option></select></label>
+        <label class="check"><input type="checkbox" id="forceInput"> <span data-i18n="settings.force">force overwrite</span></label>
+        <label class="check"><input type="checkbox" id="insertInput"> <span data-i18n="settings.insert">insert managed block</span></label>
       </section>
       <section id="operations" class="panel-section">
-        <h2>Operations</h2>
-        <p class="muted">Safe Checks</p>
-        <div class="btn-row"><button data-action="inspect" class="secondary">Inspect</button><button data-action="validate">Validate</button><button data-action="doctor">Doctor</button></div>
-        <p class="muted">Preview</p>
-        <div class="btn-row"><button data-action="diff">Preview Diff</button><button data-action="dry-run" class="warn">Dry Run Sync</button></div>
-        <p class="muted">Write</p>
-        <button data-action="sync" class="danger">Sync</button>
+        <h2 data-i18n="ops.title">Operations</h2>
+        <p class="muted" data-i18n="ops.safeChecks">Safe Checks</p>
+        <div class="btn-row">
+          <button data-action="inspect" class="secondary" data-i18n="ops.inspect">Inspect</button>
+          <button data-action="validate" data-i18n="ops.validate">Validate</button>
+          <button data-action="doctor" data-i18n="ops.doctor">Doctor</button>
+        </div>
+        <p class="muted" data-i18n="ops.preview">Preview</p>
+        <div class="btn-row">
+          <button data-action="diff" data-i18n="ops.previewDiff">Preview Diff</button>
+          <button data-action="dry-run" class="warn" data-i18n="ops.dryRun">Dry Run Sync</button>
+        </div>
+        <p class="muted" data-i18n="ops.write">Write</p>
+        <button data-action="sync" class="danger" data-i18n="ops.sync">Sync</button>
       </section>
-      <section class="panel-section"><h2>Monitor</h2><div class="monitor" id="monitor"></div></section>
+      <section class="panel-section"><h2 data-i18n="monitor.title">Monitor</h2><div class="monitor" id="monitor"></div></section>
     </aside>
     <main class="main-grid">
-      <section id="dashboard" class="card"><h2>Dashboard</h2><div class="metrics" id="dashboardMetrics"></div></section>
-      <section id="resources" class="card"><h2>Resources</h2><div id="resourcesBody"></div></section>
-      <section id="generated" class="card half"><h2>Generated Files</h2><div id="generatedBody"></div></section>
-      <section id="diagnostics" class="card half"><h2>Diagnostics</h2><div id="diagnosticsBody"></div></section>
-      <section id="packs" class="card half"><h2>Packs</h2><div id="packsBody"></div></section>
-      <section id="results" class="card"><h2>Results</h2><h3>Write Results</h3><div id="writeResultsBody"></div><h3>Diff Preview</h3><div id="diffBody"></div></section>
+      <section id="guide" class="card guide-card-wrap"><h2 data-i18n="guide.title">小白引导</h2><div id="guideBody"></div></section>
+      <section id="packs" class="card"><h2 data-i18n="packs.title">Packs 经验包</h2><div id="packsBody"></div></section>
+      <section id="dashboard" class="card"><h2 data-i18n="dashboard.title">Dashboard</h2><div class="metrics" id="dashboardMetrics"></div></section>
+      <section id="resources" class="card"><h2 data-i18n="resources.title">Resources</h2><div id="resourcesBody"></div></section>
+      <section id="generated" class="card half"><h2 data-i18n="generated.title">Generated Files</h2><div id="generatedBody"></div></section>
+      <section id="diagnostics" class="card half"><h2 data-i18n="diagnostics.title">Diagnostics</h2><div id="diagnosticsBody"></div></section>
+      <section id="results" class="card"><h2 data-i18n="results.title">Results</h2><h3 data-i18n="results.writeTitle">Write Results</h3><div id="writeResultsBody"></div><h3 data-i18n="results.diffTitle">Diff Preview</h3><div id="diffBody"></div></section>
     </main>
   </div>
 </div>
